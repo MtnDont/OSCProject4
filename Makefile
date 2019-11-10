@@ -1,12 +1,12 @@
 CFLAGS = -c -O3 -Wall
 libs = storage.o virtual_disk.o oufs_lib_support.o oufs_lib.o
-EXEC = oufs_inspect oufs_stats oufs_format oufs_ls oufs_mkdir oufs_rmdir oufs_cat oufs_copy oufs_create oufs_remove oufs_touch
+EXEC = oufs_inspect oufs_stats oufs_format oufs_ls oufs_mkdir oufs_rmdir oufs_append oufs_cat oufs_copy oufs_create oufs_link oufs_remove oufs_touch
 INCLUDES = storage.h oufs_lib_support.h oufs_lib.h virtual_disk.h
 
 all: $(libs) $(EXEC)
 
-#$(EXEC): $(EXEC).o $(libs)
-#	gcc $^ -o $@
+#$(EXEC): $(EXEC).o $(libs) $(INCLUDES)
+#	gcc $< $(libs) -o $@
 
 oufs_inspect: oufs_inspect.o $(libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
@@ -26,6 +26,9 @@ oufs_mkdir: oufs_mkdir.o $(libs) $(INCLUDES)
 oufs_rmdir: oufs_rmdir.o $(libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
 
+oufs_append: oufs_append.o $(libs) $(INCLUDES)
+	gcc $< $(libs) -o $@
+
 oufs_cat: oufs_cat.o $($libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
 
@@ -33,6 +36,9 @@ oufs_copy: oufs_copy.o $($libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
 
 oufs_create: oufs_create.o $($libs) $(INCLUDES)
+	gcc $< $(libs) -o $@
+
+oufs_link: oufs_link.o $(libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
 
 oufs_remove: oufs_remove.o $($libs) $(INCLUDES)
