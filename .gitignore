@@ -1,0 +1,4 @@
+/tests
+*.o
+*.swp
+vdisk1
