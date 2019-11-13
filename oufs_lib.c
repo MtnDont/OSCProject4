@@ -461,8 +461,81 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
   }
 
   // TODO
-  OUFILE* fp;
+  OUFILE* fp = (OUFILE*)malloc(sizeof(OUFILE));
+  if (mode[0] == 'a') {
+    if (child == UNALLOCATED_INODE) {
+      child = oufs_create_file(parent, local_name);
+      fprintf(stderr, "ERR: %d child inode\n", child);
+      if (child == UNALLOCATED_INODE)
+        return (-1);
+      fprintf(stderr, "ERR: %d child inode\n", child);
+      /*inode.type = FILE_TYPE;
+      inode.n_references = 1;
+      inode.size = 0;
+      inode.content = UNALLOCATED_BLOCK;*/
+      fp->inode_reference = child;
+      fp->mode = "a";
+      fp->offset = 0;
+      fp->n_data_blocks = 0;
+      fprintf(stderr, "ERR: GOT HERE\n");
+    }
+    else {
+      oufs_read_inode_by_reference(child, &inode);
+      fp->inode_reference = child;
+      fp->mode = 'a';
+      fp->offset = inode.size;
+      fp->n_data_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+    }
+  }
+  if (mode[0] == 'r') {
+    //Child must exist
+    if (child == UNALLOCATED_INODE) {
+      return (-1);
+    }
+    else {
+      oufs_read_inode_by_reference(child, &inode);
+      fp->inode_reference = child;
+      fp->mode = 'r';
+      fp->offset = inode.size;
+      fp->n_data_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+    }
+  }
+  if (mode[0] == 'w') {
+    if (child == UNALLOCATED_INODE) {
+      child = oufs_create_file(parent, local_name);
+      if (child == UNALLOCATED_INODE)
+        return (-1);
+      /*inode.type = FILE_TYPE;
+      inode.n_references = 1;
+      inode.size = 0;
+      inode.content = UNALLOCATED_BLOCK;*/
+      fp->inode_reference = child;
+      fp->mode = 'w';
+      fp->offset = 0;
+      fp->n_data_blocks = 0;
+    }
+    else {
+      oufs_read_inode_by_reference(child, &inode);
+      fp->inode_reference = child;
+      fp->mode = 'w';
+      fp->offset = 0;
+      fp->n_data_blocks = 0;
+      BLOCK b;
+      memset(&b, 0, BLOCK_SIZE);
+      int current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+      for (int i = 0; i < current_blocks; i++) {
+        virtual_disk_write_block(inode.content + i, &b);
+      }
+    }
+  }
+  /*fp->inode_reference = child;
+  fp->mode = mode[0];
+  fp->offset;*/
 
+  /*
+  current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE
+  */
+  fprintf(stderr, "GOT HERE %d\n", fp != NULL);
   return(fp);
 };
 

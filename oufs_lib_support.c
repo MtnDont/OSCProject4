@@ -418,7 +418,60 @@ INODE_REFERENCE oufs_create_file(INODE_REFERENCE parent, char *local_name)
   }
 
   // TODO
+
+  //----------------------------------
+  BLOCK block;
+  BLOCK pBlock;
+  INODE child;
   INODE_REFERENCE inode_reference;
+
+  //Read master block for inode table lookup
+  virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &block);
+  virtual_disk_read_block(inode.content, &pBlock);
+
+  int index = 0;
+  int bit = -1;
+  for (int i = 0; i < N_INODES >> 3; i++) {
+    bit = oufs_find_open_bit(block.content.master.inode_allocated_flag[i]);
+    if (bit != -1) {
+      index = i;
+      inode_reference = index*8 + (7 - bit % 8);
+      block.content.master.inode_allocated_flag[i] += (1 << bit);
+      break;
+    }
+  }
+  //It didn't find an open bit, return UNALLOCATED_INODE
+  if (bit == -1) {
+    return UNALLOCATED_INODE;
+  }
+
+  //Set parent size + 1
+  inode.size = inode.size + 1;
+  
+  //Initialize blocks and inodes
+  child.type = FILE_TYPE;
+  child.n_references = 1;
+  child.size = 0;
+  child.content = UNALLOCATED_BLOCK;
+
+  //Place inode into parent block and call it (local_name)
+  for (int i = 0; i < N_DIRECTORY_ENTRIES_PER_BLOCK; i++) {
+    if (pBlock.content.directory.entry[i].inode_reference == UNALLOCATED_INODE) {
+      DIRECTORY_ENTRY dirEn;
+      dirEn.inode_reference = inode_reference;
+      strcpy(dirEn.name, local_name);
+      pBlock.content.directory.entry[i] = dirEn;
+      break;
+    }
+  }
+
+  //Write all the data into the inodes and blocks
+  virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &block);
+  oufs_write_inode_by_reference(inode_reference, &child);
+  virtual_disk_write_block(inode.content, &pBlock);
+  oufs_write_inode_by_reference(parent, &inode);
+  
+  //----------------------------------
 
   // Success
   return(inode_reference);
@@ -450,7 +503,26 @@ int oufs_deallocate_blocks(INODE *inode)
     return(0);
 
   // TODO
-
+  BLOCK_REFERENCE br;
+  BLOCK bufBlock;
+  virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master_block);
+  virtual_disk_read_block(inode->content, &block);
+  if (inode->type == FILE_TYPE) {
+    BLOCK blank;
+    memset(&blank, 0, BLOCK_SIZE);
+    for (int i = 0; i < (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE; i++) {
+      if (virtual_disk_write_block(inode->content + i, &blank) < 0)
+        return(-1);
+      else {
+        br = master_block.content.master.unallocated_end;
+        virtual_disk_read_block(br, &bufBlock);
+        master_block.content.master.unallocated_end = inode->content + i;
+        virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master_block);
+        bufBlock.next_block = inode->content + i;
+        virtual_disk_write_block(br, &bufBlock);
+      }
+    }
+  }
 
   // Success
   return(0);

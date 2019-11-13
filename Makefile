@@ -5,8 +5,8 @@ INCLUDES = storage.h oufs_lib_support.h oufs_lib.h virtual_disk.h
 
 all: $(libs) $(EXEC)
 
-#$(EXEC): $(EXEC).o $(libs) $(INCLUDES)
-#	gcc $< $(libs) -o $@
+#$(EXEC): $(libs) $(INCLUDES)
+#	gcc $^.o $< $(libs) -o $@
 
 oufs_inspect: oufs_inspect.o $(libs) $(INCLUDES)
 	gcc $< $(libs) -o $@
