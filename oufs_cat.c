@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
       int n;
       // Loop until the contents of the file are all printed to STDOUT
       while((n = oufs_fread(fp, buf, BUF_SIZE)) != 0) {
-	write(1, buf, n);
+        write(1, buf, n);
       }
 
       // Clean up

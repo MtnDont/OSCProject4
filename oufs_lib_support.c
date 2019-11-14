@@ -19,7 +19,6 @@ extern int debug;
  * - Add the specified block to THE END of the free block linked list
  * - Modify the disk copy of the deallocated block: next_block points to
  *     UNALLOCATED_BLOCK
- *   
  *
  * @param master_block Pointer to a loaded master block.  Changes to the MB will
  *           be made here, but not written to disk
@@ -503,25 +502,16 @@ int oufs_deallocate_blocks(INODE *inode)
     return(0);
 
   // TODO
-  BLOCK_REFERENCE br;
-  BLOCK bufBlock;
-  virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master_block);
-  virtual_disk_read_block(inode->content, &block);
+  if (virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master_block) != 0)
+    return(-1);
   if (inode->type == FILE_TYPE) {
-    BLOCK blank;
-    memset(&blank, 0, BLOCK_SIZE);
     for (int i = 0; i < (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE; i++) {
-      if (virtual_disk_write_block(inode->content + i, &blank) < 0)
-        return(-1);
-      else {
-        br = master_block.content.master.unallocated_end;
-        virtual_disk_read_block(br, &bufBlock);
-        master_block.content.master.unallocated_end = inode->content + i;
-        virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master_block);
-        bufBlock.next_block = inode->content + i;
-        virtual_disk_write_block(br, &bufBlock);
-      }
+      if (oufs_deallocate_block(&master_block, i + inode->content) != 0)
+        return (-1);
     }
+  }
+  else if (inode->type == DIRECTORY_TYPE) {
+
   }
 
   // Success
@@ -553,7 +543,11 @@ BLOCK_REFERENCE oufs_allocate_new_block(BLOCK *master_block, BLOCK *new_block)
 
   // TODO
   BLOCK_REFERENCE block_reference;
-
+  BLOCK b;
+  block_reference = master_block->content.master.unallocated_front;
+  virtual_disk_read_block(block_reference, &b);
+  master_block->content.master.unallocated_front = b.next_block;
+  b.next_block = UNALLOCATED_BLOCK;
 
   return(block_reference);
 }

@@ -465,10 +465,8 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
   if (mode[0] == 'a') {
     if (child == UNALLOCATED_INODE) {
       child = oufs_create_file(parent, local_name);
-      fprintf(stderr, "ERR: %d child inode\n", child);
       if (child == UNALLOCATED_INODE)
         return (-1);
-      fprintf(stderr, "ERR: %d child inode\n", child);
       /*inode.type = FILE_TYPE;
       inode.n_references = 1;
       inode.size = 0;
@@ -477,7 +475,6 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       fp->mode = "a";
       fp->offset = 0;
       fp->n_data_blocks = 0;
-      fprintf(stderr, "ERR: GOT HERE\n");
     }
     else {
       oufs_read_inode_by_reference(child, &inode);
@@ -516,16 +513,17 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
     }
     else {
       oufs_read_inode_by_reference(child, &inode);
+      BLOCK b;
+      memset(&b, 0, BLOCK_SIZE);
+      int current_blocks = (inode.size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+      for (int i = 0; i < current_blocks; i++) {
+        virtual_disk_write_block(inode.content + i, &b);
+      }
+
       fp->inode_reference = child;
       fp->mode = 'w';
       fp->offset = 0;
       fp->n_data_blocks = 0;
-      BLOCK b;
-      memset(&b, 0, BLOCK_SIZE);
-      int current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
-      for (int i = 0; i < current_blocks; i++) {
-        virtual_disk_write_block(inode.content + i, &b);
-      }
     }
   }
   /*fp->inode_reference = child;
@@ -535,7 +533,6 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
   /*
   current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE
   */
-  fprintf(stderr, "GOT HERE %d\n", fp != NULL);
   return(fp);
 };
 
@@ -634,7 +631,20 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
   len = MIN(len, end_of_file - fp->offset);
   int len_left = len;
 
+  fprintf(stderr, "Data: %d\n", current_block);
+
   // TODO
+  //If there is no more data
+  if (!len)
+    return (0);
+  
+  BLOCK b;
+  virtual_disk_read_block(inode.content, &b);
+  /*for (int i = 0; i < current_block; i++) {
+    for (int j = 0; j < byte_offset_in_block; j++) {
+      memcpy(buf, b.content.data.data, );
+    }
+  }*/
 
   // Done
   return(len_read);
@@ -687,6 +697,37 @@ int oufs_remove(char *cwd, char *path)
   }
 
   // TODO
+  oufs_read_inode_by_reference(parent, &inode_parent);
+  virtual_disk_read_block(inode_parent.content, &block);
+
+  for (int i = 0; i < N_DIRECTORY_ENTRIES_PER_BLOCK; i++) {
+    if (block.content.directory.entry[i].inode_reference != UNALLOCATED_INODE) {
+      if (block.content.directory.entry[i].inode_reference == child) {
+        DIRECTORY_ENTRY dirEn;
+        memset(&dirEn, 0, sizeof(DIRECTORY_ENTRY));
+        dirEn.inode_reference = UNALLOCATED_INODE;
+        block.content.directory.entry[i] = dirEn;
+        break;
+      }
+    }
+  }
+  inode_parent.size--;
+  virtual_disk_write_block(inode_parent.content, &block);
+  oufs_write_inode_by_reference(parent, &inode_parent);
+
+  inode.n_references--;
+
+  if (inode.n_references == 0) {
+    //Modify master inode flag table
+    BLOCK master;
+    virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master);
+    master.content.master.inode_allocated_flag[child/8] -= (1 << (7 - child%8));
+    oufs_deallocate_blocks(&inode);
+    memset(&inode, 0, sizeof(INODE));
+    inode.content = UNALLOCATED_BLOCK;
+    oufs_write_inode_by_reference(child, &inode);
+    virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master);
+  }
   
   // Success
   return(0);
