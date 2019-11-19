@@ -482,6 +482,16 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       fp->mode = 'a';
       fp->offset = inode.size;
       fp->n_data_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+      
+      BLOCK b;
+      virtual_disk_read_block(inode.content, &b);
+      fp->block_reference_cache[0] = inode.content;
+      for (int i = 1; i < fp->n_data_blocks; i++) {
+        fp->block_reference_cache[i] = b.next_block;
+        if (b.next_block != UNALLOCATED_BLOCK)
+          virtual_disk_read_block(b.next_block, &b);
+      }
+
     }
   }
   if (mode[0] == 'r') {
@@ -495,6 +505,15 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       fp->mode = 'r';
       fp->offset = inode.size;
       fp->n_data_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+
+      BLOCK b;
+      virtual_disk_read_block(inode.content, &b);
+      fp->block_reference_cache[0] = inode.content;
+      for (int i = 1; i < fp->n_data_blocks; i++) {
+        fp->block_reference_cache[i] = b.next_block;
+        if (b.next_block != UNALLOCATED_BLOCK)
+          virtual_disk_read_block(b.next_block, &b);
+      }
     }
   }
   if (mode[0] == 'w') {
