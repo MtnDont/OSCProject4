@@ -579,7 +579,8 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
     return(-1);
   }
 
-  // Compute the index for the last block in the file + the first free byte within the block
+  // Compute the index for the last block in the file +
+  // the first free byte within the block
   
   int current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
   int used_bytes_in_last_block = fp->offset % DATA_BLOCK_SIZE;
@@ -587,6 +588,29 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   int len_written = 0;
 
   // TODO
+  BLOCK master;
+  BLOCK bufB;
+  BLOCK_REFERENCE br;
+  int count = 0;
+  virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master);
+  
+  if (inode.content == UNALLOCATED_BLOCK) {
+    br = oufs_allocate_new_block(&master, &block);
+    inode.content = br;
+  
+    virtual_disk_read_block(br, &block);
+    for (int i = 0; i < MAX_BLOCKS_IN_FILE; i++) {
+      memcpy(block.content.data.data, buf + DATA_BLOCK_SIZE*count, sizeof(free_bytes_in_last_block));
+      fp->n_data_blocks++;
+      fp->block_reference_cache[i] = br;
+
+      for (int j = 0; j < strlen(buf); j++) {
+        for (int k = 0; k < free_bytes_in_last_block; k++) {
+
+        }
+      }
+    }
+  }
 
   // Done
   return(len_written);
@@ -639,12 +663,26 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
     return (0);
   
   BLOCK b;
-  virtual_disk_read_block(inode.content, &b);
-  /*for (int i = 0; i < current_block; i++) {
-    for (int j = 0; j < byte_offset_in_block; j++) {
-      memcpy(buf, b.content.data.data, );
+  int count = 0;
+
+  for (int i = current_block; i < fp->n_data_blocks; i++) {
+    virtual_disk_read_block(fp->block_reference_cache[i], &b);
+
+    if (len_left / DATA_BLOCK_SIZE >= 1) {
+      memcpy(buf + len_read, b.content.data.data, DATA_BLOCK_SIZE - byte_offset_in_block);
+      len_read += DATA_BLOCK_SIZE - byte_offset_in_block;
+      fp->offset += DATA_BLOCK_SIZE - byte_offset_in_block;
+      len_left -= DATA_BLOCK_SIZE - byte_offset_in_block;
     }
-  }*/
+    else {
+      memcpy(buf + len_read, b.content.data.data + byte_offset_in_block, len_left);
+      len_read += len_left;
+      fp->offset += len_left;
+    }
+
+    byte_offset_in_block = fp->offset % DATA_BLOCK_SIZE;
+
+  }
 
   // Done
   return(len_read);

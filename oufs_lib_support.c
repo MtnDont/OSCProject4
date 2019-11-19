@@ -506,8 +506,8 @@ int oufs_deallocate_blocks(INODE *inode)
     return(-1);
   if (inode->type == FILE_TYPE) {
     for (int i = 0; i < (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE; i++) {
-      if (oufs_deallocate_block(&master_block, i + inode->content) != 0)
-        return (-1);
+      //if (oufs_deallocate_block(&master_block, i + inode->content) != 0)
+        //return (-1);
     }
   }
   else if (inode->type == DIRECTORY_TYPE) {
