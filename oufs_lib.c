@@ -615,6 +615,9 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
     return(-1);
   }
 
+  if (inode.size == DATA_BLOCK_SIZE)
+    return 0;
+
   BLOCK master;
   BLOCK bufB;
   BLOCK_REFERENCE br;
