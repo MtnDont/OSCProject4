@@ -542,7 +542,6 @@ BLOCK_REFERENCE oufs_allocate_new_block(BLOCK *master_block, BLOCK *new_block)
   }
 
   // TODO
-  memset(new_block, 0, BLOCK_SIZE);
   BLOCK_REFERENCE block_reference;
   block_reference = master_block->content.master.unallocated_front;
   virtual_disk_read_block(block_reference, new_block);

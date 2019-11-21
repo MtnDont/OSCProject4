@@ -634,24 +634,30 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   for (int i = current_block; i < MAX_BLOCKS_IN_FILE; i++) {
     virtual_disk_read_block(br, &block);
     fprintf(stderr, "Block: %d\n", br);
+    used_bytes_in_last_block = fp->offset % DATA_BLOCK_SIZE;
+    free_bytes_in_last_block = DATA_BLOCK_SIZE - used_bytes_in_last_block;
+
     if (len_left > free_bytes_in_last_block) {
-      memcpy(block.content.data.data + fp->offset % DATA_BLOCK_SIZE, buf, free_bytes_in_last_block);
+      memcpy(block.content.data.data + used_bytes_in_last_block, buf + len_written, free_bytes_in_last_block);
       len_left -= free_bytes_in_last_block;
       len_written += free_bytes_in_last_block;
       fp->offset += free_bytes_in_last_block;
       inode.size += free_bytes_in_last_block;
       virtual_disk_write_block(br, &block);
+      fprintf(stderr, "ERR 1: %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
     }
     else {
-      memcpy(block.content.data.data + fp->offset % DATA_BLOCK_SIZE, buf, len_left);
+      memcpy(block.content.data.data + used_bytes_in_last_block, buf + len_written, len_left);
       len_written += len_left;
       fp->offset += len_left;
       inode.size += len_left;
+      len_left = 0;
       virtual_disk_write_block(br, &block);
+      fprintf(stderr, "ERR 2: %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
       break;
     }
 
-    if (i != MAX_BLOCKS_IN_FILE) {
+    if (i != MAX_BLOCKS_IN_FILE - 1) {
       br = oufs_allocate_new_block(&master, &bufB);
       fp->block_reference_cache[i+1] = br;
       fp->n_data_blocks++;
