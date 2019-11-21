@@ -18,7 +18,8 @@ int main(int argc, char** argv) {
   virtual_disk_attach(disk_name, pipe_name_base);
   if(argc == 1) {
     fprintf(stderr, "Usage: oufs_create <file name>\n");
-  }else{
+  }
+  else {
     OUFILE *fp = oufs_fopen(cwd, argv[1], "a");
     unsigned char buf[BUF_SIZE];
     if(fp != NULL) {

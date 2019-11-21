@@ -601,10 +601,12 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   // Compute the index for the last block in the file +
   // the first free byte within the block
   
-  int current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+  //int current_block = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+  int current_block = fp->offset / DATA_BLOCK_SIZE;
   int used_bytes_in_last_block = fp->offset % DATA_BLOCK_SIZE;
   int free_bytes_in_last_block = DATA_BLOCK_SIZE - used_bytes_in_last_block;
   int len_written = 0;
+  int len_left = len;
 
   // TODO
   BLOCK master;
@@ -616,20 +618,45 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   if (inode.content == UNALLOCATED_BLOCK) {
     br = oufs_allocate_new_block(&master, &block);
     inode.content = br;
-  
+    fp->block_reference_cache[0] = br;
+    fp->n_data_blocks++;
+    virtual_disk_write_block(br, &block);
+  }
+  else
+    br = fp->block_reference_cache[current_block];
+
+  for (int i = current_block; i < MAX_BLOCKS_IN_FILE; i++) {
     virtual_disk_read_block(br, &block);
-    for (int i = 0; i < MAX_BLOCKS_IN_FILE; i++) {
-      memcpy(block.content.data.data, buf + DATA_BLOCK_SIZE*count, sizeof(free_bytes_in_last_block));
+    fprintf(stderr, "Block: %d\n", br);
+    if (len_left > free_bytes_in_last_block) {
+      memcpy(block.content.data.data + fp->offset % DATA_BLOCK_SIZE, buf, free_bytes_in_last_block);
+      len_left -= free_bytes_in_last_block;
+      len_written += free_bytes_in_last_block;
+      fp->offset += free_bytes_in_last_block;
+      inode.size += free_bytes_in_last_block;
+      virtual_disk_write_block(br, &block);
+    }
+    else {
+      memcpy(block.content.data.data + fp->offset % DATA_BLOCK_SIZE, buf, len_left);
+      len_written += len_left;
+      fp->offset += len_left;
+      inode.size += len_left;
+      virtual_disk_write_block(br, &block);
+      break;
+    }
+
+    if (i != MAX_BLOCKS_IN_FILE) {
+      br = oufs_allocate_new_block(&master, &bufB);
+      fp->block_reference_cache[i+1] = br;
       fp->n_data_blocks++;
-      fp->block_reference_cache[i] = br;
-
-      for (int j = 0; j < strlen(buf); j++) {
-        for (int k = 0; k < free_bytes_in_last_block; k++) {
-
-        }
-      }
+      block.next_block = br;
+      virtual_disk_write_block(fp->block_reference_cache[i], &block);
+      virtual_disk_write_block(br, &bufB);
     }
   }
+
+  virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master);
+  oufs_write_inode_by_reference(fp->inode_reference, &inode);
 
   // Done
   return(len_written);
@@ -857,4 +884,6 @@ int oufs_link(char *cwd, char *path_src, char *path_dst)
 
 
   // TODO
+
+  return(0);
 }

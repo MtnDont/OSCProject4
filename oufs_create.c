@@ -18,13 +18,14 @@ int main(int argc, char** argv) {
   virtual_disk_attach(disk_name, pipe_name_base);
   if(argc == 1) {
     fprintf(stderr, "Usage: oufs_create <file name>\n");
-  }else{
+  }
+  else {
     OUFILE *fp = oufs_fopen(cwd, argv[1], "w");
     unsigned char buf[BUF_SIZE];
     if(fp != NULL) {
       int n;
       while((n = read(0, buf, BUF_SIZE)) != 0) {
-	oufs_fwrite(fp, buf, n);
+	      oufs_fwrite(fp, buf, n);
       }
     
       oufs_fclose(fp);
