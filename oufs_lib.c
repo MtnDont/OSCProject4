@@ -609,6 +609,12 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   int len_left = len;
 
   // TODO
+
+  if (inode.type != FILE_TYPE) {
+    fprintf(stderr, "Cannot write to directories\n");
+    return(-1);
+  }
+
   BLOCK master;
   BLOCK bufB;
   BLOCK_REFERENCE br;
