@@ -462,6 +462,10 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
 
   // TODO
   OUFILE* fp = (OUFILE*)malloc(sizeof(OUFILE));
+
+  if (inode.type != FILE_TYPE)
+    return NULL;
+
   if (mode[0] == 'a') {
     if (child == UNALLOCATED_INODE) {
       child = oufs_create_file(parent, local_name);
