@@ -503,8 +503,8 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       oufs_read_inode_by_reference(child, &inode);
       fp->inode_reference = child;
       fp->mode = 'r';
-      fp->offset = inode.size;
-      fp->n_data_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+      fp->offset = 0;
+      fp->n_data_blocks = (inode.size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
 
       BLOCK b;
       virtual_disk_read_block(inode.content, &b);
@@ -720,7 +720,7 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
 
   // TODO
   //If there is no more data
-  if (!len)
+  if (fp->offset == inode.size)
     return (0);
   
   BLOCK b;
@@ -744,7 +744,6 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
     byte_offset_in_block = fp->offset % DATA_BLOCK_SIZE;
 
   }
-
   // Done
   return(len_read);
 }
