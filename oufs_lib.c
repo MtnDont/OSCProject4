@@ -466,7 +466,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
     if (child == UNALLOCATED_INODE) {
       child = oufs_create_file(parent, local_name);
       if (child == UNALLOCATED_INODE)
-        return (-1);
+        NULL;
       /*inode.type = FILE_TYPE;
       inode.n_references = 1;
       inode.size = 0;
@@ -497,7 +497,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
   if (mode[0] == 'r') {
     //Child must exist
     if (child == UNALLOCATED_INODE) {
-      return (-1);
+      return NULL;
     }
     else {
       oufs_read_inode_by_reference(child, &inode);
@@ -520,7 +520,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
     if (child == UNALLOCATED_INODE) {
       child = oufs_create_file(parent, local_name);
       if (child == UNALLOCATED_INODE)
-        return (-1);
+        return NULL;
       /*inode.type = FILE_TYPE;
       inode.n_references = 1;
       inode.size = 0;
@@ -720,6 +720,8 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
 
   // TODO
   //If there is no more data
+  if (inode.type != FILE_TYPE)
+    return -1;
   if (fp->offset == inode.size)
     return (0);
   
