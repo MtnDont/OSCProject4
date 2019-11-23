@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     if(fp_in != NULL && fp_out != NULL) {
       int n;
       while((n = oufs_fread(fp_in, buf, 1000)) != 0) {
-	oufs_fwrite(fp_out, buf, n);
+	      oufs_fwrite(fp_out, buf, n);
       }
     
       oufs_fclose(fp_in);

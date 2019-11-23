@@ -534,12 +534,13 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
     }
     else {
       oufs_read_inode_by_reference(child, &inode);
-      BLOCK b;
+      oufs_deallocate_blocks(&inode);
+      /*BLOCK b;
       memset(&b, 0, BLOCK_SIZE);
       int current_blocks = (inode.size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
       for (int i = 0; i < current_blocks; i++) {
         virtual_disk_write_block(inode.content + i, &b);
-      }
+      }*/
 
       fp->inode_reference = child;
       fp->mode = 'w';
@@ -838,6 +839,8 @@ int oufs_remove(char *cwd, char *path)
 
   inode.n_references--;
 
+  //oufs_deallocate_blocks(&inode);
+
   if (inode.n_references == 0) {
     //Modify master inode flag table
     BLOCK master;
@@ -845,10 +848,13 @@ int oufs_remove(char *cwd, char *path)
     master.content.master.inode_allocated_flag[child/8] -= (1 << (7 - child%8));
     oufs_deallocate_blocks(&inode);
     memset(&inode, 0, sizeof(INODE));
-    inode.content = UNALLOCATED_BLOCK;
+    inode.content = UNALLOCATED_INODE;
     oufs_write_inode_by_reference(child, &inode);
     virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master);
   }
+  else
+    oufs_write_inode_by_reference(child, &inode);
+  
   
   // Success
   return(0);

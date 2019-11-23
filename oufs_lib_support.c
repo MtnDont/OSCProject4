@@ -35,7 +35,7 @@ int oufs_deallocate_block(BLOCK *master_block, BLOCK_REFERENCE block_reference)
     master_block->content.master.unallocated_front = master_block->content.master.unallocated_end =
       block_reference;
 
-  }else{
+  } else {
     BLOCK c;
     BLOCK_REFERENCE br = master_block->content.master.unallocated_end;
     if (virtual_disk_read_block(br, &c) != 0)
@@ -47,7 +47,7 @@ int oufs_deallocate_block(BLOCK *master_block, BLOCK_REFERENCE block_reference)
 
   // Update the new end block
   if(virtual_disk_read_block(block_reference, &b) != 0) {
-    fprintf(stderr, "deallocate_block: error reading new end block\n");
+    fprintf(stderr, "deallocate_block: error reading new end block %d\n", block_reference);
     return(-1);
   }
 
@@ -502,16 +502,30 @@ int oufs_deallocate_blocks(INODE *inode)
     return(0);
 
   // TODO
+  if (inode->type != FILE_TYPE)
+    return -1;
+
   if (virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master_block) != 0)
     return(-1);
-  if (inode->type == FILE_TYPE) {
-    for (int i = 0; i < (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE; i++) {
-      //if (oufs_deallocate_block(&master_block, i + inode->content) != 0)
-        //return (-1);
-    }
-  }
-  else if (inode->type == DIRECTORY_TYPE) {
+  
+  int n_data_blocks = (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+  BLOCK_REFERENCE refs[n_data_blocks];
 
+  BLOCK b;
+  virtual_disk_read_block(inode->content, &b);
+  refs[0] = inode->content;
+  for (int i = 1; i < n_data_blocks; i++) {
+    refs[i] = b.next_block;
+    if (b.next_block != UNALLOCATED_BLOCK)
+      virtual_disk_read_block(b.next_block, &b);
+  }
+
+  for (int i = n_data_blocks - 1; i >= 0; i--) {
+    virtual_disk_read_block(refs[i], &b);
+    memset(&b, 0, BLOCK_SIZE);
+    virtual_disk_write_block(refs[i], &b);
+    if (oufs_deallocate_block(&master_block, refs[i]) != 0)
+      return (-1);
   }
 
   // Success
