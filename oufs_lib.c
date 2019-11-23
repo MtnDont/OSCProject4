@@ -466,7 +466,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
     if (child == UNALLOCATED_INODE) {
       child = oufs_create_file(parent, local_name);
       if (child == UNALLOCATED_INODE)
-        NULL;
+        return NULL;
       /*inode.type = FILE_TYPE;
       inode.n_references = 1;
       inode.size = 0;
@@ -611,13 +611,13 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
   int len_left = len;
 
   // TODO
-
+  //memset(buf, 0, len);
   if (inode.type != FILE_TYPE) {
     fprintf(stderr, "Cannot write to directories\n");
     return(-1);
   }
 
-  if (inode.size == DATA_BLOCK_SIZE)
+  if (inode.size == DATA_BLOCK_SIZE*MAX_BLOCKS_IN_FILE)
     return 0;
 
   BLOCK master;
@@ -631,6 +631,17 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
     inode.content = br;
     fp->block_reference_cache[0] = br;
     fp->n_data_blocks++;
+    block.next_block = UNALLOCATED_BLOCK;
+    virtual_disk_write_block(br, &block);
+  }
+  else if (used_bytes_in_last_block == 0) {
+    br = oufs_allocate_new_block(&master, &block);
+    virtual_disk_read_block(fp->block_reference_cache[current_block-1], &bufB);
+    bufB.next_block = br;
+    fp->block_reference_cache[current_block] = br;
+    fp->n_data_blocks++;
+    block.next_block = UNALLOCATED_BLOCK;
+    virtual_disk_write_block(fp->block_reference_cache[current_block-1], &bufB);
     virtual_disk_write_block(br, &block);
   }
   else
@@ -642,6 +653,14 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
     used_bytes_in_last_block = fp->offset % DATA_BLOCK_SIZE;
     free_bytes_in_last_block = DATA_BLOCK_SIZE - used_bytes_in_last_block;
 
+    fprintf(stderr, "ERR CHECK: --------\ncurrent_block: %d\nlen_left: %d\noffset: %d\nsize: %d\n br: %d\n", current_block, len_left, fp->offset, inode.size, br);
+
+    for (int i = 0; i < MAX_BLOCKS_IN_FILE; i++) {
+      fprintf(stderr, "i: %d\n", fp->block_reference_cache[i]);
+      if (fp->block_reference_cache[i] == 0)
+        break;
+    }
+
     if (len_left > free_bytes_in_last_block) {
       memcpy(block.content.data.data + used_bytes_in_last_block, buf + len_written, free_bytes_in_last_block);
       len_left -= free_bytes_in_last_block;
@@ -649,7 +668,6 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
       fp->offset += free_bytes_in_last_block;
       inode.size += free_bytes_in_last_block;
       virtual_disk_write_block(br, &block);
-      fprintf(stderr, "ERR 1: %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
     }
     else {
       memcpy(block.content.data.data + used_bytes_in_last_block, buf + len_written, len_left);
@@ -658,7 +676,7 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
       inode.size += len_left;
       len_left = 0;
       virtual_disk_write_block(br, &block);
-      fprintf(stderr, "ERR 2: %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
+      fprintf(stderr, "ERR 2 CHECK: --------\nlen_left %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
       break;
     }
 
@@ -721,31 +739,32 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
   fprintf(stderr, "Data: %d\n", current_block);
 
   // TODO
+  memset(buf, 0, strlen(buf));
   //If there is no more data
   if (inode.type != FILE_TYPE)
     return -1;
   if (fp->offset == inode.size)
-    return (0);
+    return 0;
   
   BLOCK b;
   int count = 0;
 
   for (int i = current_block; i < fp->n_data_blocks; i++) {
     virtual_disk_read_block(fp->block_reference_cache[i], &b);
-
-    if (len_left / DATA_BLOCK_SIZE >= 1) {
-      memcpy(buf + len_read, b.content.data.data, DATA_BLOCK_SIZE - byte_offset_in_block);
+    if (len_left / (DATA_BLOCK_SIZE - byte_offset_in_block) >= 1) {
+      memcpy(buf + len_read, b.content.data.data + byte_offset_in_block, DATA_BLOCK_SIZE - byte_offset_in_block);
       len_read += DATA_BLOCK_SIZE - byte_offset_in_block;
-      fp->offset += DATA_BLOCK_SIZE - byte_offset_in_block;
+      fp->offset += (DATA_BLOCK_SIZE - byte_offset_in_block);
       len_left -= DATA_BLOCK_SIZE - byte_offset_in_block;
     }
     else {
       memcpy(buf + len_read, b.content.data.data + byte_offset_in_block, len_left);
       len_read += len_left;
       fp->offset += len_left;
+      break;
     }
 
-    byte_offset_in_block = fp->offset % DATA_BLOCK_SIZE;
+    byte_offset_in_block = (fp->offset % DATA_BLOCK_SIZE);
 
   }
   // Done
