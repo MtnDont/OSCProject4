@@ -254,7 +254,7 @@ int oufs_find_file(char *cwd, char * path, INODE_REFERENCE *parent, INODE_REFERE
 
   if(debug) {
     fprintf(stderr, "\tDEBUG: Full path: %s\n", full_path);
-  };
+  }
 
   // Start scanning from the root directory
   // Root directory inode
@@ -289,7 +289,7 @@ int oufs_find_file(char *cwd, char * path, INODE_REFERENCE *parent, INODE_REFERE
     }
 
     directory_name = strtok(NULL, "/");
-  };
+  }
 
   // Item found.
   if(*child == UNALLOCATED_INODE) {
@@ -523,25 +523,7 @@ int oufs_deallocate_blocks(INODE *inode)
   master_block.content.master.unallocated_end = br;
   virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master_block);
 
-  /*int n_data_blocks = (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
-  BLOCK_REFERENCE refs[n_data_blocks];
-
-  BLOCK b;
-  virtual_disk_read_block(inode->content, &b);
-  refs[0] = inode->content;
-  for (int i = 1; i < n_data_blocks; i++) {
-    refs[i] = b.next_block;
-    if (b.next_block != UNALLOCATED_BLOCK)
-      virtual_disk_read_block(b.next_block, &b);
-  }
-
-  for (int i = n_data_blocks - 1; i >= 0; i--) {
-    virtual_disk_read_block(refs[i], &b);
-    memset(&b, 0, BLOCK_SIZE);
-    virtual_disk_write_block(refs[i], &b);
-    if (oufs_deallocate_block(&master_block, refs[i]) != 0)
-      return (-1);
-  }*/
+  inode->content = UNALLOCATED_BLOCK;
 
   // Success
   return(0);
