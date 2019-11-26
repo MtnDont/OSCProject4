@@ -12,6 +12,9 @@ oufs_cat {filename}
 oufs_copy {filename source} {destination}
     Copies a file from one directory to another
 
+oufs_create {filename}
+    Writes data to a file, and clears its data if the file exists.
+
 oufs_link {source} {destination}
     Links one file in one directory to one in another directory,
     pointing to the same data.
