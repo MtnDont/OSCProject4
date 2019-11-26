@@ -524,6 +524,7 @@ int oufs_deallocate_blocks(INODE *inode)
   virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master_block);
 
   inode->content = UNALLOCATED_BLOCK;
+  inode->size = 0;
 
   // Success
   return(0);
