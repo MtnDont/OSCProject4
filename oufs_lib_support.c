@@ -509,6 +509,21 @@ int oufs_deallocate_blocks(INODE *inode)
     return(-1);
   
   int n_data_blocks = (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
+  BLOCK_REFERENCE br = inode->content;
+  for (int i = 0; i < n_data_blocks; i++) {
+    virtual_disk_read_block(br, &block);
+    memset(block.content.data.data, 0, sizeof(block.content.data.data));
+    virtual_disk_write_block(br, &block);
+    if (block.next_block != UNALLOCATED_BLOCK)
+      br = block.next_block;
+  }
+  virtual_disk_read_block(master_block.content.master.unallocated_end, &block);
+  block.next_block = inode->content;
+  virtual_disk_write_block(master_block.content.master.unallocated_end, &block);
+  master_block.content.master.unallocated_end = br;
+  virtual_disk_write_block(MASTER_BLOCK_REFERENCE, &master_block);
+
+  /*int n_data_blocks = (inode->size + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE;
   BLOCK_REFERENCE refs[n_data_blocks];
 
   BLOCK b;
@@ -526,7 +541,7 @@ int oufs_deallocate_blocks(INODE *inode)
     virtual_disk_write_block(refs[i], &b);
     if (oufs_deallocate_block(&master_block, refs[i]) != 0)
       return (-1);
-  }
+  }*/
 
   // Success
   return(0);

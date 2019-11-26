@@ -844,9 +844,9 @@ int oufs_remove(char *cwd, char *path)
   if (inode.n_references == 0) {
     //Modify master inode flag table
     BLOCK master;
+    oufs_deallocate_blocks(&inode);
     virtual_disk_read_block(MASTER_BLOCK_REFERENCE, &master);
     master.content.master.inode_allocated_flag[child/8] -= (1 << (7 - child%8));
-    oufs_deallocate_blocks(&inode);
     memset(&inode, 0, sizeof(INODE));
     inode.content = UNALLOCATED_INODE;
     oufs_write_inode_by_reference(child, &inode);
