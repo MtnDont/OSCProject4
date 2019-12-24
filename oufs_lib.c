@@ -467,10 +467,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       child = oufs_create_file(parent, local_name);
       if (child == UNALLOCATED_INODE)
         return NULL;
-      /*inode.type = FILE_TYPE;
-      inode.n_references = 1;
-      inode.size = 0;
-      inode.content = UNALLOCATED_BLOCK;*/
+      
       fp->inode_reference = child;
       fp->mode = 'a';
       fp->offset = 0;
@@ -543,13 +540,7 @@ OUFILE* oufs_fopen(char *cwd, char *path, char *mode)
       fp->n_data_blocks = 0;
     }
   }
-  /*fp->inode_reference = child;
-  fp->mode = mode[0];
-  fp->offset;*/
-
-  /*
-  current_blocks = (fp->offset + DATA_BLOCK_SIZE - 1) / DATA_BLOCK_SIZE
-  */
+  
   return(fp);
 };
 
@@ -645,17 +636,8 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
 
   for (int i = current_block; i < MAX_BLOCKS_IN_FILE; i++) {
     virtual_disk_read_block(br, &block);
-    fprintf(stderr, "Block: %d\n", br);
     used_bytes_in_last_block = fp->offset % DATA_BLOCK_SIZE;
     free_bytes_in_last_block = DATA_BLOCK_SIZE - used_bytes_in_last_block;
-
-    fprintf(stderr, "ERR CHECK: --------\ncurrent_block: %d\nlen_left: %d\noffset: %d\nsize: %d\n br: %d\n", current_block, len_left, fp->offset, inode.size, br);
-
-    for (int i = 0; i < MAX_BLOCKS_IN_FILE; i++) {
-      fprintf(stderr, "i: %d\n", fp->block_reference_cache[i]);
-      if (fp->block_reference_cache[i] == 0)
-        break;
-    }
 
     if (len_left > free_bytes_in_last_block) {
       memcpy(block.content.data.data + used_bytes_in_last_block, buf + len_written, free_bytes_in_last_block);
@@ -672,7 +654,6 @@ int oufs_fwrite(OUFILE *fp, unsigned char * buf, int len)
       inode.size += len_left;
       len_left = 0;
       virtual_disk_write_block(br, &block);
-      fprintf(stderr, "ERR 2 CHECK: --------\nlen_left %d\noffset: %d\nsize: %d\n br: %d\n", len_left, fp->offset, inode.size, br);
       break;
     }
 
@@ -732,18 +713,14 @@ int oufs_fread(OUFILE *fp, unsigned char * buf, int len)
   len = MIN(len, end_of_file - fp->offset);
   int len_left = len;
 
-  fprintf(stderr, "Data: %d\n", current_block);
-
   // TODO
-  memset(buf, 0, sizeof(buf));
+  int buffSize = sizeof(buf);
+  memset(buf, 0, buffSize);
   //If there is no more data
   if (inode.type != FILE_TYPE)
     return -1;
   if (fp->offset == inode.size)
     return 0;
-  
-  //BLOCK b;
-  //int count = 0;
 
   for (int i = current_block; i < fp->n_data_blocks; i++) {
     virtual_disk_read_block(fp->block_reference_cache[i], &block);

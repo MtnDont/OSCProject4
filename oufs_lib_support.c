@@ -95,7 +95,7 @@ void oufs_init_directory_structures(INODE *inode, BLOCK *block,
   strcpy(block->content.directory.entry[1].name, "..");
   block->content.directory.entry[1].inode_reference = parent_inode_reference;
   
-  for (int i = 2; i < N_INODES_PER_BLOCK; i++) {
+  for (int i = 2; i < N_DIRECTORY_ENTRIES_PER_BLOCK; i++) {
     block->content.directory.entry[i].inode_reference = UNALLOCATED_INODE;
   }
   block->next_block = UNALLOCATED_BLOCK;
@@ -274,7 +274,8 @@ int oufs_find_file(char *cwd, char * path, INODE_REFERENCE *parent, INODE_REFERE
     }
 
     INODE inode;
-    oufs_read_inode_by_reference(*child, &inode);
+    if (oufs_read_inode_by_reference(*child, &inode) != 0)
+      return (-1);
     grandparent = *parent;
     *parent = *child;
     *child = oufs_find_directory_element(&inode, directory_name);
